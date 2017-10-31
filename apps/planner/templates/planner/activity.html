@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title></title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <style media="screen">
+            #map {
+                height: 400px;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+        <script>
+            $(document).ready(function(){
+                $('#mealPlan').on('submit', function(e){
+                    e.preventDefault()
+                })
+                $('#activityPlan').on('submit', function(e){
+                    e.preventDefault();
+                })
+            })
+        </script>
+    </head>
+    <body>
+        <nav class = "navbar navbar-default">
+            <div class="header">
+                <p class="nav navbar-text">Welcome To The Planner</p>
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="/plan">Add a new Plan</a></li>
+                    <li><a href="/activity/{{request.session.plan_id}}/show">Show Current Plan</a></li>
+                    <li><a href="/logout">Logout</a></li>
+                </ul>
+            </div>
+        </nav>
+        <div class="container">
+            <div class="col-md-6">
+                <form class="col-md-9" id="mealPlan">
+                    {% csrf_token %}
+                    <h3>Looking for Food?</h3>
+                    <h6><label>What Kind of Food?</label></h6>
+                    <input type="hidden" name="button" value="meal">
+                    <input type="hidden" name="location" value="{{start.city}}">
+                    <select class="form-control" name="meal" id="meal">
+                        <option value="-">-</option>
+                        <option value="Chinese">Chinese</option>
+                        <option value="Korean">Korean</option>
+                        <option value="Indian">Indian</option>
+                        <option value="American">American</option>
+                        <option value="Mexican">Mexican</option>
+                    </select>
+                    <h6><label>Feeling like eating something else?</label></h6>
+                    <input type="text" name="meal_alt" class="form-control" id="meal_alt">
+                    <h6><label>Price:</label></h6>
+                    <select class="form-control" name="price" id="minPrice">
+                        <option value="1">$</option>
+                        <option value="2">$$</option>
+                        <option value="3">$$$</option>
+                        <option value="4">$$$$</option>
+                    </select><br>
+                    <input type="submit" id="addMeal" class="btn btn-classic" value="Search Meal">
+                </form>
+            </div>
+            <div class="col-md-6">
+                <form class="col-md-9" id="activityPlan">
+                    {% csrf_token %}
+                    <input type="hidden" name="button" value="activity">
+                    <h3>Looking for something else to do?</h3>
+                    <h6>Indoors</h6>
+                    <select class="form-control" name="activity" id="activity">
+                        <option value="-">-</option>
+                        <option value="sports">Sports</option>
+                        <option value="museum">Museum</option>
+                    </select>
+                    <h6>Outdoors</h6>
+                    <select class="form-control" name="activity_alt" id="activity_alt">
+                        <option value="-">-</option>
+                        <option value="parks">Parks</option>
+                        <option value="hiking">Hiking</option>
+                    </select>
+                    <h6>Can not find an option?</h6>
+                    <input type="text" name="activity_alt_alt" class="form-control" id="activity_alt_alt"><br>
+                    <input type="submit" value="Search Activity" class="btn btn-classic" id="addActivity">
+                </form>
+            </div>
+            <div class="col-md-6">
+                <form class="col-md-9" action="/activity/{{request.session.plan_id}}/add" method="post">
+                    <h3>Choose a location</h3>
+                    {% csrf_token %}
+                    <select class="form-control" name="newActivity" id="searchSelection"></select><br>
+                    <input type="submit" value="Add to Plan" class='btn btn-classic'>
+                </form>
+            </div>
+            <div id="map" class="container col-md-6"></div>
+        </div>
+        <script>
+            var map;
+            var service;
+            var infowindow;
+            var location;
+            var latlng = {};
+            var markers = [];
+            var $select = $('#searchSelection');
+
+            function initialize() {
+                var url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + "{{start.city}}" + '&key=AIzaSyCU3lP4pg-iFEcdIFpwGKDLKpaR6kbEC6Q';
+                $.get(url,function(res){
+                    latlng = {lat: res.results[0].geometry.location.lat, lng: res.results[0].geometry.location.lng}
+                    var pyrmont = new google.maps.LatLng(latlng.lat, latlng.lng);
+
+                    map = new google.maps.Map(document.getElementById('map'), {
+                        center: pyrmont,
+                        zoom: 13
+                    });
+
+                    infowindow = new google.maps.InfoWindow();
+                    var service = new google.maps.places.PlacesService(map);
+
+                    // When user is searching for food places, use the following code
+                    var mealButton = document.getElementById('addMeal');
+                    google.maps.event.addDomListener(mealButton, 'click', function() {
+                        deleteMarkers();
+                        var meal = $('#meal').val();
+                        if(meal == '-'){
+                            meal = $('#meal_alt').val();
+                        }
+                        service.textSearch({
+                            query: meal + "+Restuarant",
+                            location: pyrmont,
+                            radius: 2000,
+                            minPriceLevel: $('#minPrice').val(),
+                        }, callback);
+                    });
+
+                    // When the user is searching for activities to do, use the following
+                    var activityButton = document.getElementById('addActivity');
+                    google.maps.event.addDomListener(activityButton, 'click', function(){
+                        deleteMarkers();
+                        var activity = $('#activity').val();
+                        if(activity == '-'){
+                            activity = $('#activity_alt').val();
+                            if(activity == '-'){
+                                activity = $('#activity_alt_alt').val();
+                            }
+                        }
+                        service.textSearch({
+                            query: activity,
+                            location: pyrmont,
+                            radius: 2000,
+                        }, callback);
+                    });
+                });
+            }
+
+            function callback(results, status) {
+                $select.empty();
+                if (status == google.maps.places.PlacesServiceStatus.OK) {
+                    for (var i = 0; i < results.length; i++) {
+                        createMarker(results[i]);
+                        var $option = $('<option/>').attr("value", results[i].name).text(results[i].name);
+                        $select.append($option);
+                    }
+                }
+            }
+            function createMarker(place) {
+                var placeLoc = place.geometry.location;
+                var marker = new google.maps.Marker({
+                    map: map,
+                    position: place.geometry.location
+                });
+
+                markers.push(marker);
+                google.maps.event.addListener(marker, 'click', function() {
+                    infowindow.setContent(place.name);
+                    infowindow.open(map, this);
+                });
+             }
+
+             function setMapOnAll(map) {
+                 for (var i = 0; i < markers.length; i++) {
+                     markers[i].setMap(map);
+                 }
+             }
+
+             function clearMarkers(){
+                 setMapOnAll(null);
+             }
+             function deleteMarkers(){
+                 clearMarkers();
+                 markers=[];
+             }
+        </script>
+        <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCU3lP4pg-iFEcdIFpwGKDLKpaR6kbEC6Q&libraries=places&callback=initialize"></script>
+    </body>
+</html>

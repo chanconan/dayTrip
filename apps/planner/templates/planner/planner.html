@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Daily Planner</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    </head>
+    <body>
+        <nav class = "navbar navbar-default">
+            <div class="header">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="/logout">Logout</a></li>
+                </ul>
+            </div>
+        </nav>
+        <div class="container">
+            <h2>Hello {{user.first_name}}</h2>
+            <div class="container">
+                <div class="col-md-4 col-md-offset-1" id="planner_box">
+                    <form class="col-md-9" action="/newplan" method="post">
+                        {% csrf_token %}
+                        <h3>Plan Your Day</h3>
+                        <label>City:</label><br>
+                        <input type="text" name="city" class="form-control">
+                        <label>Start-Time</label><br>
+                        <input type="time" name="start_time" class="form-control">
+                        <label>End-Time</label><br>
+                        <input type="time" name="end_time" class="form-control">
+                        <label>Starting Address:</label><br>
+                        <input type="text" name="start_location" class="form-control">
+                        <label>Transportation</label><br>
+                        <select class="form-control" name="transportation">
+                            <option value="driving">Car</option>
+                            <option value="walking">Walk</option>
+                            <option value="bicycling">Bike</option>
+                        </select><br>
+                        <input type="submit" value="Make a Plan" class="btn btn-success">
+                    </form>
+                </div>
+                <div class="container">
+                    <div class="col-md-4 col-md-offset-1" id="previous_plans">
+                        There will be previous plans here
+                        <ul>
+                            {% for plan in plans %}
+                                <li><a href="/activity/{{plan.id}}">{{plan.city}}</a></li>
+                            {% endfor   %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </body>
+    </div>
+</html>
